@@ -45,8 +45,18 @@ func TestClientWhenServerSendsBadResponse(t *testing.T) {
     assert.NotNil(t, responseErr, "We expect the client to propogate a server error to its caller")
 }
 
+func TestMask(t *testing.T) {
+	arcAuthClient, _ := New("whatever", "v1", "user", "pass")
+
+	assert.Equal(t, "", arcAuthClient.Mask(""))
+	assert.Equal(t, "*****", arcAuthClient.Mask("a"))
+	assert.Equal(t, "*****", arcAuthClient.Mask("foo"))
+	assert.Equal(t, "*****", arcAuthClient.Mask("abcde"))
+	assert.Equal(t, "ab***f", arcAuthClient.Mask("abcdef"))
+}
+
 /*
- * This test will only run if you have booted up a localhost version of the arc-auth application that's
+ * These boot2docker tests will only run if you have booted up a localhost version of the arc-auth application that's
  * available at the boot2docker:3000 port.
  * You should be able to do this by running "docker-compose build && docker-compose up" within the arc-auth/
  * project directory and as long as you have a line in your /etc/hosts file mapping the servername "boot2docker"
@@ -56,6 +66,8 @@ func TestClientWhenServerSendsBadResponse(t *testing.T) {
  * the assertion of a user "vaughant" showing up in the responseBody is based on the fixture data loaded into 
  * the arc-auth-server's fake MySQL database on startup.
  */
+const localhostServer = "boot2docker:3000"
+
 func TestClientWithGoodTokenAgainstBoot2DockerImage(t *testing.T) {
 	responseBody, responseErr := runBoot2DockerTest(t, "FakeDemoToken")
 
@@ -70,7 +82,8 @@ func TestClientWithBadTokenAgainstBoot2DockerImage(t *testing.T) {
 }
 
 func runBoot2DockerTest(t *testing.T, token string) (string, error) {
-	const localhostServer = "boot2docker:3000"
+	// See if the boot2docker image is up where we expect, skip the test execution if it isn't reachable
+	// Hint: run "go test -v" to see whether the tests are skipped
 	_, connErr := net.Dial("tcp", localhostServer)
 	if (connErr != nil) {
 		t.Skip("This test won't run unless it can reach ", localhostServer)
