@@ -62,11 +62,11 @@ func New(server, user string, pass string) (*ArcAuthClient, error) {
  * token will still be "successful" and a 204/Empty Content from the server will result in an empty string
  * being returned to the caller
  */
-func (arcAuthClient *ArcAuthClient) Auth(token string) (string, error) {
+func (this *ArcAuthClient) Auth(token string) (string, error) {
 
     httpClient := &http.Client{ } // TODO move to the struct itself?
-    request, err := http.NewRequest("GET", fmt.Sprintf("%s/auth", arcAuthClient.Host), nil)
-    request.SetBasicAuth(arcAuthClient.User, arcAuthClient.Pass)
+    request, err := http.NewRequest("GET", fmt.Sprintf("%s/auth", this.Host), nil)
+    request.SetBasicAuth(this.User, this.Pass)
     request.Header.Set(AdmiralTokenHeader, token)
 
     response, err := httpClient.Do(request)
@@ -75,7 +75,7 @@ func (arcAuthClient *ArcAuthClient) Auth(token string) (string, error) {
         log.Printf("Error : %s", err)
         return "", err
     } else if (response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent) {
-        log.Printf("Got response code %s when authenticating token %s", response.StatusCode, arcAuthClient.Mask(token))
+        log.Printf("Got response code %s when authenticating token %s", response.StatusCode, this.Mask(token))
         return "", fmt.Errorf("Non-20X response code %s", response.StatusCode)
     } else {
         body, error := ioutil.ReadAll(response.Body)
@@ -86,8 +86,8 @@ func (arcAuthClient *ArcAuthClient) Auth(token string) (string, error) {
 /**
  * Invokes this.Mask() with the maskChar "*"
  */
-func (arcAuthClient *ArcAuthClient) Mask(plaintext string) string {
-    return arcAuthClient.MaskWithChar(plaintext, "*")
+func (this *ArcAuthClient) Mask(plaintext string) string {
+    return this.MaskWithChar(plaintext, "*")
 }
 
 /**
@@ -98,7 +98,7 @@ func (arcAuthClient *ArcAuthClient) Mask(plaintext string) string {
  *
  * The empty input string is not masked at all and an empty string is returned
  */
-func (arcAuthClient *ArcAuthClient) MaskWithChar(plaintext, maskChar string) string {
+func (this *ArcAuthClient) MaskWithChar(plaintext, maskChar string) string {
     if plaintext == "" {
         return ""
     }
