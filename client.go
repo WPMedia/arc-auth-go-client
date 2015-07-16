@@ -1,11 +1,5 @@
 package arcauth
 
-// TODO
-// Create a transport with keep-alives and reuse for a long time
-// Cache results
-// Do a better job returning error strings based of HTTP response codes
-
-
 import (
     "bytes"
     "fmt"
@@ -18,9 +12,10 @@ import (
 const AdmiralTokenHeader = "X-Admiral-Token"
 
 type ArcAuthClient struct {
-    Host  string
-    User  string
-    Pass  string
+    Host       string
+    User       string
+    Pass       string
+    HttpClient *http.Client
 }
 
 
@@ -47,6 +42,7 @@ func New(server, user string, pass string) (*ArcAuthClient, error) {
         Host:   fmt.Sprintf("%s/api/v1", server),
         User:   user,
         Pass:   pass,
+        HttpClient: &http.Client{ },
     }, nil
 }
 
@@ -59,13 +55,11 @@ func New(server, user string, pass string) (*ArcAuthClient, error) {
  * being returned to the caller
  */
 func (this *ArcAuthClient) Auth(token string) (string, error) {
-
-    httpClient := &http.Client{ } // TODO move to the struct itself?
     request, err := http.NewRequest("GET", fmt.Sprintf("%s/auth", this.Host), nil)
     request.SetBasicAuth(this.User, this.Pass)
     request.Header.Set(AdmiralTokenHeader, token)
 
-    response, err := httpClient.Do(request)
+    response, err := this.HttpClient.Do(request)
 
     defer response.Body.Close()
 
@@ -77,10 +71,10 @@ func (this *ArcAuthClient) Auth(token string) (string, error) {
     if (response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent) {
         log.Printf("Got response code %s when authenticating token %s", response.StatusCode, this.Mask(token))
         return "", &ErrorResponse{Code: response.StatusCode, Message: "Non-20X response code"}
-    } else {
-        body, error := ioutil.ReadAll(response.Body)
-        return string(body), error
     }
+    
+    body, error := ioutil.ReadAll(response.Body)
+    return string(body), error    
 }
 
 type ErrorResponse struct {
