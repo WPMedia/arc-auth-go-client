@@ -15,7 +15,6 @@ import (
     "strings"
 )
 
-const DefaultApiVerion = "v1"
 const AdmiralTokenHeader = "X-Admiral-Token"
 
 type ArcAuthClient struct {
@@ -24,26 +23,18 @@ type ArcAuthClient struct {
     Pass  string
 }
 
-type ErrorResponse struct {
-    Code    int     `json:"code"`
-    Message string  `json:"mesage"`
-}
 
 /**
  * New constructs a new ArcAuthClient for communication with an arc-auth-server
  * server - the root FQDN of the arc-auth-server (e.g. https://arc-auth.ext.nile.works)
- * apiVersion - the version of the server-side API to communicate with.  The only supported option right now is "v1"
  * user - the user to use in BasicAuth when making requests for token authentication (this go client itself must be authenticated!)
  * pass - the password for the user when sending BasicAuth
  */
-func New(server, apiVersion, user string, pass string) (*ArcAuthClient, error) {
+func New(server, user string, pass string) (*ArcAuthClient, error) {
     log.Printf("Constructing new arc-auth client")
 
     if server == "" {
         return nil, fmt.Errorf("Arc Auth Server cannot be empty, provide FQDN value like 'http://your.service.com'")
-    }
-    if apiVersion == "" {
-        apiVersion = DefaultApiVerion
     }
     if user == "" {
         return nil, fmt.Errorf("You must provide a user to authenticate against the arc-auth server")
@@ -53,7 +44,7 @@ func New(server, apiVersion, user string, pass string) (*ArcAuthClient, error) {
     }
 
     return &ArcAuthClient {
-        Host:   fmt.Sprintf("%s/api/%s", server, apiVersion),
+        Host:   fmt.Sprintf("%s/api/v1", server),
         User:   user,
         Pass:   pass,
     }, nil
@@ -67,32 +58,45 @@ func New(server, apiVersion, user string, pass string) (*ArcAuthClient, error) {
  * token will still be "successful" and a 204/Empty Content from the server will result in an empty string
  * being returned to the caller
  */
-func (arcAuthClient *ArcAuthClient) Auth(token string) (string, error) {
+func (this *ArcAuthClient) Auth(token string) (string, error) {
 
     httpClient := &http.Client{ } // TODO move to the struct itself?
-    request, err := http.NewRequest("GET", fmt.Sprintf("%s/auth", arcAuthClient.Host), nil)
-    request.SetBasicAuth(arcAuthClient.User, arcAuthClient.Pass)
+    request, err := http.NewRequest("GET", fmt.Sprintf("%s/auth", this.Host), nil)
+    request.SetBasicAuth(this.User, this.Pass)
     request.Header.Set(AdmiralTokenHeader, token)
 
     response, err := httpClient.Do(request)
 
+    defer response.Body.Close()
+
     if err != nil {
         log.Printf("Error : %s", err)
         return "", err
-    } else if (response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent) {
-        log.Printf("Got response code %s when authenticating token %s", response.StatusCode, arcAuthClient.Mask(token))
-        return "", fmt.Errorf("Non-20X response code %s", response.StatusCode)
+    } 
+
+    if (response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent) {
+        log.Printf("Got response code %s when authenticating token %s", response.StatusCode, this.Mask(token))
+        return "", &ErrorResponse{Code: response.StatusCode, Message: "Non-20X response code"}
     } else {
         body, error := ioutil.ReadAll(response.Body)
         return string(body), error
     }
 }
 
+type ErrorResponse struct {
+    Code    int     `json:"code"`
+    Message string  `json:"message"`
+}
+
+func (e *ErrorResponse) Error() string {
+    return fmt.Sprintf("HTTP Code %s | %s", e.Code, e.Message)
+}
+
 /**
  * Invokes this.Mask() with the maskChar "*"
  */
-func (arcAuthClient *ArcAuthClient) Mask(plaintext string) string {
-    return arcAuthClient.MaskWithChar(plaintext, "*")
+func (this *ArcAuthClient) Mask(plaintext string) string {
+    return this.MaskWithChar(plaintext, "*")
 }
 
 /**
@@ -103,7 +107,7 @@ func (arcAuthClient *ArcAuthClient) Mask(plaintext string) string {
  *
  * The empty input string is not masked at all and an empty string is returned
  */
-func (arcAuthClient *ArcAuthClient) MaskWithChar(plaintext, maskChar string) string {
+func (this *ArcAuthClient) MaskWithChar(plaintext, maskChar string) string {
     if plaintext == "" {
         return ""
     }

@@ -11,17 +11,17 @@ import (
 )
 
 func TestNewClientNeedsServer(t *testing.T) {
-    _, err := New("", "v1", "user", "pass")
+    _, err := New("", "user", "pass")
     assert.Error(t, err)
 }
 
 func TestNewClientNeedsUser(t *testing.T) {
-    _, err := New("whatever", "v1", "", "pass")
+    _, err := New("whatever", "", "pass")
     assert.Error(t, err)
 }
 
 func TestNewClientNeedsPass(t *testing.T) {
-    _, err := New("whatever", "v1", "user", "")
+    _, err := New("whatever", "user", "")
     assert.Error(t, err)
 }
 
@@ -33,7 +33,7 @@ func TestClientWhenServerSendsGoodResponse(t *testing.T) {
     testServer := httptest.NewServer(http.HandlerFunc(handler))
     defer testServer.Close()
 
-    arcAuthClient, err := New(testServer.URL, "v1", "user", "pass")
+    arcAuthClient, err := New(testServer.URL, "user", "pass")
     if err != nil {
         t.Errorf("unexpected error %v", err)        
     }
@@ -52,14 +52,14 @@ func TestClientWhenServerSendsBadResponse(t *testing.T) {
     testServer := httptest.NewServer(http.HandlerFunc(handler))
     defer testServer.Close()
 
-    arcAuthClient, _ := New(testServer.URL, "v1", "user", "pass")
+    arcAuthClient, _ := New(testServer.URL, "user", "pass")
     _, responseErr := arcAuthClient.Auth("FakeDemoToken")
 
     assert.NotNil(t, responseErr, "We expect the client to propogate a server error to its caller")
 }
 
 func TestMask(t *testing.T) {
-    arcAuthClient, _ := New("whatever", "v1", "user", "pass")
+    arcAuthClient, _ := New("whatever", "user", "pass")
 
     assert.Equal(t, "", arcAuthClient.Mask(""))
     assert.Equal(t, "*****", arcAuthClient.Mask("a"))
@@ -101,7 +101,7 @@ func runBoot2DockerTest(t *testing.T, token string) (string, error) {
     if (connErr != nil) {
         t.Skip("This test won't run unless it can reach ", localhostServer)
     }
-    arcAuthClient, arcAuthClientErr := New("http://" + localhostServer, "v1", "demo-app", "WKZd$&vk&$I7VCa@ueVl1sMMj7iFW315")
+    arcAuthClient, arcAuthClientErr := New("http://" + localhostServer, "demo-app", "WKZd$&vk&$I7VCa@ueVl1sMMj7iFW315")
     assert.Nil(t, arcAuthClientErr, "Unexpected error constructing an arcAuthClient")
 
     return arcAuthClient.Auth(token)
