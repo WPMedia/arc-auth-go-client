@@ -7,9 +7,9 @@ package arcauth
 
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
+    "bytes"
+    "fmt"
+    "io/ioutil"
     "log"
     "net/http"
     "strings"
@@ -37,26 +37,26 @@ type ErrorResponse struct {
  * pass - the password for the user when sending BasicAuth
  */
 func New(server, apiVersion, user string, pass string) (*ArcAuthClient, error) {
-	log.Printf("Constructing new arc-auth client")
+    log.Printf("Constructing new arc-auth client")
 
-	if server == "" {
-		return nil, fmt.Errorf("Arc Auth Server cannot be empty, provide FQDN value like 'http://your.service.com'")
-	}
-	if apiVersion == "" {
-		apiVersion = DefaultApiVerion
-	}
-	if user == "" {
-		return nil, fmt.Errorf("You must provide a user to authenticate against the arc-auth server")
-	}
-	if pass == "" {
-		return nil, fmt.Errorf("You must provide a password to authenticate against the arc-auth server")
-	}
+    if server == "" {
+        return nil, fmt.Errorf("Arc Auth Server cannot be empty, provide FQDN value like 'http://your.service.com'")
+    }
+    if apiVersion == "" {
+        apiVersion = DefaultApiVerion
+    }
+    if user == "" {
+        return nil, fmt.Errorf("You must provide a user to authenticate against the arc-auth server")
+    }
+    if pass == "" {
+        return nil, fmt.Errorf("You must provide a password to authenticate against the arc-auth server")
+    }
 
-	return &ArcAuthClient {
-		Host:	fmt.Sprintf("%s/api/%s", server, apiVersion),
-		User:	user,
-		Pass:	pass,
-	}, nil
+    return &ArcAuthClient {
+        Host:   fmt.Sprintf("%s/api/%s", server, apiVersion),
+        User:   user,
+        Pass:   pass,
+    }, nil
 }
 
 /**
@@ -69,30 +69,30 @@ func New(server, apiVersion, user string, pass string) (*ArcAuthClient, error) {
  */
 func (arcAuthClient *ArcAuthClient) Auth(token string) (string, error) {
 
-	httpClient := &http.Client{ } // TODO move to the struct itself?
-	request, err := http.NewRequest("GET", fmt.Sprintf("%s/auth", arcAuthClient.Host), nil)
-	request.SetBasicAuth(arcAuthClient.User, arcAuthClient.Pass)
-	request.Header.Set(AdmiralTokenHeader, token)
+    httpClient := &http.Client{ } // TODO move to the struct itself?
+    request, err := http.NewRequest("GET", fmt.Sprintf("%s/auth", arcAuthClient.Host), nil)
+    request.SetBasicAuth(arcAuthClient.User, arcAuthClient.Pass)
+    request.Header.Set(AdmiralTokenHeader, token)
 
-	response, err := httpClient.Do(request)
+    response, err := httpClient.Do(request)
 
-	if err != nil {
-		log.Printf("Error : %s", err)
-		return "", err
-	} else if (response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent) {
-		log.Printf("Got response code %s when authenticating token %s", response.StatusCode, arcAuthClient.Mask(token))
-		return "", fmt.Errorf("Non-20X response code %s", response.StatusCode)
-	} else {
-		body, error := ioutil.ReadAll(response.Body)
-		return string(body), error
-	}
+    if err != nil {
+        log.Printf("Error : %s", err)
+        return "", err
+    } else if (response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent) {
+        log.Printf("Got response code %s when authenticating token %s", response.StatusCode, arcAuthClient.Mask(token))
+        return "", fmt.Errorf("Non-20X response code %s", response.StatusCode)
+    } else {
+        body, error := ioutil.ReadAll(response.Body)
+        return string(body), error
+    }
 }
 
 /**
  * Invokes this.Mask() with the maskChar "*"
  */
 func (arcAuthClient *ArcAuthClient) Mask(plaintext string) string {
-	return arcAuthClient.MaskWithChar(plaintext, "*")
+    return arcAuthClient.MaskWithChar(plaintext, "*")
 }
 
 /**
@@ -104,18 +104,18 @@ func (arcAuthClient *ArcAuthClient) Mask(plaintext string) string {
  * The empty input string is not masked at all and an empty string is returned
  */
 func (arcAuthClient *ArcAuthClient) MaskWithChar(plaintext, maskChar string) string {
-	if plaintext == "" {
-		return ""
-	}
-	if len(plaintext) <= 5 {
-		return strings.Repeat(maskChar, 5)
-	}
-	chars := strings.Split(plaintext, "")
-	
-	var buffer bytes.Buffer
-	buffer.WriteString(chars[0])
-	buffer.WriteString(strings.Repeat(maskChar, len(plaintext) - 3))
-	buffer.WriteString(chars[len(plaintext) - 2])
-	buffer.WriteString(chars[len(plaintext) - 1])
-	return buffer.String()
+    if plaintext == "" {
+        return ""
+    }
+    if len(plaintext) <= 5 {
+        return strings.Repeat(maskChar, 5)
+    }
+    chars := strings.Split(plaintext, "")
+    
+    var buffer bytes.Buffer
+    buffer.WriteString(chars[0])
+    buffer.WriteString(strings.Repeat(maskChar, len(plaintext) - 3))
+    buffer.WriteString(chars[len(plaintext) - 2])
+    buffer.WriteString(chars[len(plaintext) - 1])
+    return buffer.String()
 }

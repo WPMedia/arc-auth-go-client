@@ -1,71 +1,71 @@
 package arcauth
 
 import (
-	"fmt"
-	"net"
-	"net/http"
-	"net/http/httptest"
-	"testing"
+    "fmt"
+    "net"
+    "net/http"
+    "net/http/httptest"
+    "testing"
 
-	"github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/assert"
 )
 
 func TestNewClientNeedsServer(t *testing.T) {
-	_, err := New("", "v1", "user", "pass")
-	assert.Error(t, err)
+    _, err := New("", "v1", "user", "pass")
+    assert.Error(t, err)
 }
 
 func TestNewClientNeedsUser(t *testing.T) {
-	_, err := New("whatever", "v1", "", "pass")
-	assert.Error(t, err)
+    _, err := New("whatever", "v1", "", "pass")
+    assert.Error(t, err)
 }
 
 func TestNewClientNeedsPass(t *testing.T) {
-	_, err := New("whatever", "v1", "user", "")
-	assert.Error(t, err)
+    _, err := New("whatever", "v1", "user", "")
+    assert.Error(t, err)
 }
 
 func TestClientWhenServerSendsGoodResponse(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
+    handler := func(w http.ResponseWriter, r *http.Request) {
         fmt.Fprint(w, "Hello, client")
     }
 
-	testServer := httptest.NewServer(http.HandlerFunc(handler))
+    testServer := httptest.NewServer(http.HandlerFunc(handler))
     defer testServer.Close()
 
     arcAuthClient, err := New(testServer.URL, "v1", "user", "pass")
     if err != nil {
-		t.Errorf("unexpected error %v", err)		
-	}
+        t.Errorf("unexpected error %v", err)        
+    }
 
-	body, error := arcAuthClient.Auth("FakeDemoToken")
+    body, error := arcAuthClient.Auth("FakeDemoToken")
 
-	assert.Equal(t, "Hello, client", body)
-	assert.NoError(t, error)
+    assert.Equal(t, "Hello, client", body)
+    assert.NoError(t, error)
 }
 
 func TestClientWhenServerSendsBadResponse(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
+    handler := func(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "something failed", http.StatusInternalServerError)
     }
 
     testServer := httptest.NewServer(http.HandlerFunc(handler))
     defer testServer.Close()
 
-	arcAuthClient, _ := New(testServer.URL, "v1", "user", "pass")
-	_, responseErr := arcAuthClient.Auth("FakeDemoToken")
+    arcAuthClient, _ := New(testServer.URL, "v1", "user", "pass")
+    _, responseErr := arcAuthClient.Auth("FakeDemoToken")
 
     assert.NotNil(t, responseErr, "We expect the client to propogate a server error to its caller")
 }
 
 func TestMask(t *testing.T) {
-	arcAuthClient, _ := New("whatever", "v1", "user", "pass")
+    arcAuthClient, _ := New("whatever", "v1", "user", "pass")
 
-	assert.Equal(t, "", arcAuthClient.Mask(""))
-	assert.Equal(t, "*****", arcAuthClient.Mask("a"))
-	assert.Equal(t, "*****", arcAuthClient.Mask("foo"))
-	assert.Equal(t, "*****", arcAuthClient.Mask("abcde"))
-	assert.Equal(t, "a***ef", arcAuthClient.Mask("abcdef"))
+    assert.Equal(t, "", arcAuthClient.Mask(""))
+    assert.Equal(t, "*****", arcAuthClient.Mask("a"))
+    assert.Equal(t, "*****", arcAuthClient.Mask("foo"))
+    assert.Equal(t, "*****", arcAuthClient.Mask("abcde"))
+    assert.Equal(t, "a***ef", arcAuthClient.Mask("abcdef"))
 }
 
 /*
@@ -82,27 +82,27 @@ func TestMask(t *testing.T) {
 const localhostServer = "boot2docker:3000"
 
 func TestClientWithGoodTokenAgainstBoot2DockerImage(t *testing.T) {
-	responseBody, responseErr := runBoot2DockerTest(t, "FakeDemoToken")
+    responseBody, responseErr := runBoot2DockerTest(t, "FakeDemoToken")
 
-	assert.Nil(t, responseErr, "Unexpected responseErr %s", responseErr)
-	assert.Contains(t, responseBody, "vaughant") // that should be the user associated with the FakeDemoToken
+    assert.Nil(t, responseErr, "Unexpected responseErr %s", responseErr)
+    assert.Contains(t, responseBody, "vaughant") // that should be the user associated with the FakeDemoToken
 }
 
 func TestClientWithBadTokenAgainstBoot2DockerImage(t *testing.T) {
-	responseBody, responseErr := runBoot2DockerTest(t, "No Such Token")	
-	assert.Nil(t, responseErr, "Unexpected responseErr %s", responseErr)
-	assert.Equal(t, responseBody, "")
+    responseBody, responseErr := runBoot2DockerTest(t, "No Such Token") 
+    assert.Nil(t, responseErr, "Unexpected responseErr %s", responseErr)
+    assert.Equal(t, responseBody, "")
 }
 
 func runBoot2DockerTest(t *testing.T, token string) (string, error) {
-	// See if the boot2docker image is up where we expect, skip the test execution if it isn't reachable
-	// Hint: run "go test -v" to see whether the tests are skipped
-	_, connErr := net.Dial("tcp", localhostServer)
-	if (connErr != nil) {
-		t.Skip("This test won't run unless it can reach ", localhostServer)
-	}
-	arcAuthClient, arcAuthClientErr := New("http://" + localhostServer, "v1", "demo-app", "WKZd$&vk&$I7VCa@ueVl1sMMj7iFW315")
-	assert.Nil(t, arcAuthClientErr, "Unexpected error constructing an arcAuthClient")
+    // See if the boot2docker image is up where we expect, skip the test execution if it isn't reachable
+    // Hint: run "go test -v" to see whether the tests are skipped
+    _, connErr := net.Dial("tcp", localhostServer)
+    if (connErr != nil) {
+        t.Skip("This test won't run unless it can reach ", localhostServer)
+    }
+    arcAuthClient, arcAuthClientErr := New("http://" + localhostServer, "v1", "demo-app", "WKZd$&vk&$I7VCa@ueVl1sMMj7iFW315")
+    assert.Nil(t, arcAuthClientErr, "Unexpected error constructing an arcAuthClient")
 
-	return arcAuthClient.Auth(token)
+    return arcAuthClient.Auth(token)
 }
