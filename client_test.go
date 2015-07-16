@@ -10,11 +10,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestNewClientNeedsServer(t *testing.T) {
+	_, err := New("", "v1", "user", "pass")
+	assert.Error(t, err)
+}
 
+func TestNewClientNeedsUser(t *testing.T) {
+	_, err := New("whatever", "v1", "", "pass")
+	assert.Error(t, err)
+}
+
+func TestNewClientNeedsPass(t *testing.T) {
+	_, err := New("whatever", "v1", "user", "")
+	assert.Error(t, err)
+}
 
 func TestClientWhenServerSendsGoodResponse(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintln(w, "Hello, client")
+        fmt.Fprint(w, "Hello, client")
     }
 
 	testServer := httptest.NewServer(http.HandlerFunc(handler))
@@ -27,8 +40,8 @@ func TestClientWhenServerSendsGoodResponse(t *testing.T) {
 
 	body, error := arcAuthClient.Auth("FakeDemoToken")
 
-	fmt.Print("body is ", body)
-	fmt.Println("error is ", error)
+	assert.Equal(t, "Hello, client", body)
+	assert.NoError(t, error)
 }
 
 func TestClientWhenServerSendsBadResponse(t *testing.T) {
@@ -52,7 +65,7 @@ func TestMask(t *testing.T) {
 	assert.Equal(t, "*****", arcAuthClient.Mask("a"))
 	assert.Equal(t, "*****", arcAuthClient.Mask("foo"))
 	assert.Equal(t, "*****", arcAuthClient.Mask("abcde"))
-	assert.Equal(t, "ab***f", arcAuthClient.Mask("abcdef"))
+	assert.Equal(t, "a***ef", arcAuthClient.Mask("abcdef"))
 }
 
 /*

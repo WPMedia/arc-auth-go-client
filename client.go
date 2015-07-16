@@ -62,24 +62,28 @@ func New(server, apiVersion, user string, pass string) (*ArcAuthClient, error) {
 /**
  * Auth makes a request to the arc-auth-server's ".../auth" endpoint with the
  * token string set as the Header associated to the AdmiralTokenHeader key
+ *
+ * On a succesful connection, the raw JSON from the server is returned by this method.  Note that an invalid
+ * token will still be "successful" and a 204/Empty Content from the server will result in an empty string
+ * being returned to the caller
  */
 func (arcAuthClient *ArcAuthClient) Auth(token string) (string, error) {
 
 	httpClient := &http.Client{ } // TODO move to the struct itself?
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/auth", arcAuthClient.Host), nil)
-	req.SetBasicAuth(arcAuthClient.User, arcAuthClient.Pass)
-	req.Header.Set(AdmiralTokenHeader, token)
+	request, err := http.NewRequest("GET", fmt.Sprintf("%s/auth", arcAuthClient.Host), nil)
+	request.SetBasicAuth(arcAuthClient.User, arcAuthClient.Pass)
+	request.Header.Set(AdmiralTokenHeader, token)
 
-	resp, err := httpClient.Do(req)
+	response, err := httpClient.Do(request)
 
 	if err != nil {
 		log.Printf("Error : %s", err)
 		return "", err
-	} else if (resp.Status != "200 OK" && resp.Status != "204 No Content") {
-		log.Printf("Got response code %s when authenticating token %s", resp.Status, arcAuthClient.Mask(token))
-		return "", fmt.Errorf("Non-20X response code %s", resp.Status)
+	} else if (response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent) {
+		log.Printf("Got response code %s when authenticating token %s", response.StatusCode, arcAuthClient.Mask(token))
+		return "", fmt.Errorf("Non-20X response code %s", response.StatusCode)
 	} else {
-		body, error := ioutil.ReadAll(resp.Body)
+		body, error := ioutil.ReadAll(response.Body)
 		return string(body), error
 	}
 }
@@ -110,8 +114,8 @@ func (arcAuthClient *ArcAuthClient) MaskWithChar(plaintext, maskChar string) str
 	
 	var buffer bytes.Buffer
 	buffer.WriteString(chars[0])
-	buffer.WriteString(chars[1])
 	buffer.WriteString(strings.Repeat(maskChar, len(plaintext) - 3))
+	buffer.WriteString(chars[len(plaintext) - 2])
 	buffer.WriteString(chars[len(plaintext) - 1])
 	return buffer.String()
 }
