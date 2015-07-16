@@ -4,10 +4,12 @@ package arcauth
 // Create a transport with keep-alives and reuse for a long time
 // Cache results
 // Do a better job returning error strings based of HTTP response codes
+// add logging
+// mask the token in the logging
 
 import (
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
     "log"
     "net/http"
 )
@@ -37,7 +39,7 @@ func New(server, apiVersion, user string, pass string) (*ArcAuthClient, error) {
 	log.Printf("Constructing new arc-auth client")
 
 	if server == "" {
-		return nil, fmt.Errorf("Arc Auth Server cannot be empty")
+		return nil, fmt.Errorf("Arc Auth Server cannot be empty, provide FQDN value like 'http://your.service.com'")
 	}
 	if apiVersion == "" {
 		apiVersion = DefaultApiVerion
@@ -62,7 +64,7 @@ func New(server, apiVersion, user string, pass string) (*ArcAuthClient, error) {
  */
 func (arcAuthClient *ArcAuthClient) Auth(token string) (string, error) {
 
-	httpClient := &http.Client{ }
+	httpClient := &http.Client{ } // TODO move to the struct itself?
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/auth", arcAuthClient.Host), nil)
 	req.SetBasicAuth(arcAuthClient.User, arcAuthClient.Pass)
 	req.Header.Set(AdmiralTokenHeader, token)
@@ -72,6 +74,9 @@ func (arcAuthClient *ArcAuthClient) Auth(token string) (string, error) {
 	if err != nil {
 		fmt.Printf("Error : %s", err)
 		return "", err
+	} else if (resp.Status != "200 OK" && resp.Status != "204 No Content") {
+		log.Printf("Got response code %s when authenticating token %s", resp.Status, token)
+		return "", fmt.Errorf("Non-20X response code %s", resp.Status)
 	} else {
 		body, error := ioutil.ReadAll(resp.Body)
 		return string(body), error
