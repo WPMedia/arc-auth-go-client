@@ -15,7 +15,6 @@ import (
     "strings"
 )
 
-const DefaultApiVerion = "v1"
 const AdmiralTokenHeader = "X-Admiral-Token"
 
 type ArcAuthClient struct {
@@ -32,18 +31,14 @@ type ErrorResponse struct {
 /**
  * New constructs a new ArcAuthClient for communication with an arc-auth-server
  * server - the root FQDN of the arc-auth-server (e.g. https://arc-auth.ext.nile.works)
- * apiVersion - the version of the server-side API to communicate with.  The only supported option right now is "v1"
  * user - the user to use in BasicAuth when making requests for token authentication (this go client itself must be authenticated!)
  * pass - the password for the user when sending BasicAuth
  */
-func New(server, apiVersion, user string, pass string) (*ArcAuthClient, error) {
+func New(server, user string, pass string) (*ArcAuthClient, error) {
     log.Printf("Constructing new arc-auth client")
 
     if server == "" {
         return nil, fmt.Errorf("Arc Auth Server cannot be empty, provide FQDN value like 'http://your.service.com'")
-    }
-    if apiVersion == "" {
-        apiVersion = DefaultApiVerion
     }
     if user == "" {
         return nil, fmt.Errorf("You must provide a user to authenticate against the arc-auth server")
@@ -53,7 +48,7 @@ func New(server, apiVersion, user string, pass string) (*ArcAuthClient, error) {
     }
 
     return &ArcAuthClient {
-        Host:   fmt.Sprintf("%s/api/%s", server, apiVersion),
+        Host:   fmt.Sprintf("%s/api/v1", server),
         User:   user,
         Pass:   pass,
     }, nil
