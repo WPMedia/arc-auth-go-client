@@ -71,6 +71,8 @@ func (this *ArcAuthClient) Auth(token string) (string, error) {
 
     response, err := httpClient.Do(request)
 
+    defer response.Body.Close()
+
     if err != nil {
         log.Printf("Error : %s", err)
         return "", err
