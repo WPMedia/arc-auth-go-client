@@ -23,10 +23,6 @@ type ArcAuthClient struct {
     Pass  string
 }
 
-type ErrorResponse struct {
-    Code    int     `json:"code"`
-    Message string  `json:"mesage"`
-}
 
 /**
  * New constructs a new ArcAuthClient for communication with an arc-auth-server
@@ -76,13 +72,24 @@ func (this *ArcAuthClient) Auth(token string) (string, error) {
     if err != nil {
         log.Printf("Error : %s", err)
         return "", err
-    } else if (response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent) {
+    } 
+
+    if (response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent) {
         log.Printf("Got response code %s when authenticating token %s", response.StatusCode, this.Mask(token))
-        return "", fmt.Errorf("Non-20X response code %s", response.StatusCode)
+        return "", &ErrorResponse{Code: response.StatusCode, Message: "Non-20X response code"}
     } else {
         body, error := ioutil.ReadAll(response.Body)
         return string(body), error
     }
+}
+
+type ErrorResponse struct {
+    Code    int     `json:"code"`
+    Message string  `json:"message"`
+}
+
+func (e *ErrorResponse) Error() string {
+    return fmt.Sprintf("HTTP Code %s | %s", e.Code, e.Message)
 }
 
 /**
