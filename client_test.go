@@ -26,17 +26,10 @@ func TestNewClientNeedsPass(t *testing.T) {
 }
 
 func TestClientWhenServerSendsGoodResponse(t *testing.T) {
-    handler := func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprint(w, "Hello, client")
-    }
-
-    testServer := httptest.NewServer(http.HandlerFunc(handler))
+    testServer := httptest.NewServer(http.HandlerFunc(createHandlerFunc(200, "Hello, client")))
     defer testServer.Close()
 
-    arcAuthClient, err := New(testServer.URL, "user", "pass")
-    if err != nil {
-        t.Errorf("unexpected error %v", err)        
-    }
+    arcAuthClient := createArcAuthClient(t, testServer.URL)
 
     body, error := arcAuthClient.Auth("FakeDemoToken")
 
@@ -45,17 +38,43 @@ func TestClientWhenServerSendsGoodResponse(t *testing.T) {
 }
 
 func TestClientWhenServerSendsBadResponse(t *testing.T) {
-    handler := func(w http.ResponseWriter, r *http.Request) {
+    testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "something failed", http.StatusInternalServerError)
-    }
-
-    testServer := httptest.NewServer(http.HandlerFunc(handler))
+    }))
     defer testServer.Close()
 
-    arcAuthClient, _ := New(testServer.URL, "user", "pass")
+    arcAuthClient := createArcAuthClient(t, testServer.URL)
     _, responseErr := arcAuthClient.Auth("FakeDemoToken")
 
     assert.NotNil(t, responseErr, "We expect the client to propogate a server error to its caller")
+}
+
+func TestClientWhenServerSendsNoContent(t *testing.T) {
+    testServer := httptest.NewServer(http.HandlerFunc(createHandlerFunc(204, "")))
+    defer testServer.Close()
+
+    arcAuthClient := createArcAuthClient(t, testServer.URL)
+
+    body, error := arcAuthClient.Auth("FakeDemoToken")
+
+    assert.Equal(t, "{}", body)
+    assert.NoError(t, error)
+}
+
+func createHandlerFunc(responseCode int, responseBody string) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(responseCode)
+        w.Header().Set("Content-Type", "application/json")
+        fmt.Fprint(w, responseBody)
+    }
+}
+
+func createArcAuthClient(t *testing.T, url string) *ArcAuthClient {
+    arcAuthClient, err := New(url, "user", "pass")
+    if err != nil {
+        t.Errorf("unexpected error creating the ArcAuthClient %v", err)        
+    }
+    return arcAuthClient
 }
 
 func TestMask(t *testing.T) {
@@ -91,7 +110,7 @@ func TestClientWithGoodTokenAgainstBoot2DockerImage(t *testing.T) {
 func TestClientWithBadTokenAgainstBoot2DockerImage(t *testing.T) {
     responseBody, responseErr := runBoot2DockerTest(t, "No Such Token") 
     assert.Nil(t, responseErr, "Unexpected responseErr %s", responseErr)
-    assert.Equal(t, responseBody, "")
+    assert.Equal(t, responseBody, "{}")
 }
 
 func runBoot2DockerTest(t *testing.T, token string) (string, error) {
