@@ -68,11 +68,16 @@ func (this *ArcAuthClient) Auth(token string) (string, error) {
         return "", err
     } 
 
-    if (response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent) {
+    if (response.StatusCode == http.StatusNoContent) {
+        log.Printf("Got response code %s for token %s, so returning empty JSON block", response.StatusCode, this.Mask(token))
+        return "{}", nil
+    }
+
+    if (response.StatusCode != http.StatusOK) {
         log.Printf("Got response code %s when authenticating token %s", response.StatusCode, this.Mask(token))
         return "", &ErrorResponse{Code: response.StatusCode, Message: "Non-20X response code"}
     }
-    
+
     body, error := ioutil.ReadAll(response.Body)
     return string(body), error    
 }
