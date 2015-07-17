@@ -59,14 +59,17 @@ func (this *ArcAuthClient) Auth(token string) (string, error) {
     request.SetBasicAuth(this.User, this.Pass)
     request.Header.Set(AdmiralTokenHeader, token)
 
+    log.Printf("making request %v", request)
+    log.Printf("client.Auth(%s) with user(%s) and pass(%s)", token, this.User, this.Pass)
     response, err := this.HttpClient.Do(request)
+    log.Printf("made request %v and response was %v and err was %v", request, response, err)
 
     defer response.Body.Close()
-
     if err != nil {
         log.Printf("Error : %s", err)
         return "", err
     } 
+
 
     if (response.StatusCode == http.StatusNoContent) {
         log.Printf("Got response code %s for token %s, so returning empty JSON block", response.StatusCode, this.Mask(token))
